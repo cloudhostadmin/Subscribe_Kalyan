@@ -27,25 +27,6 @@
             to   { opacity:1; transform:translateY(0); }
         }
 
-        /* ── SELLER BANNER ── */
-        .seller-banner {
-            display:none; background:linear-gradient(135deg,#fffbf0,#fff5d6);
-            border:2px solid #d4a017; border-radius:10px;
-            padding:12px 18px; margin-bottom:24px;
-            align-items:center; gap:14px; animation:fadeIn .4s ease;
-        }
-        .seller-banner.show { display:flex; }
-        .seller-icon {
-            width:42px; height:42px; border-radius:10px;
-            background:linear-gradient(135deg,#d4a017,#8b6914);
-            display:flex; align-items:center; justify-content:center;
-            font-size:20px; flex-shrink:0;
-        }
-        .seller-info { flex:1; }
-        .seller-label { font-size:11px; color:#8b7355; text-transform:uppercase; letter-spacing:1px; }
-        .seller-name  { font-size:14px; font-weight:700; color:#2d1f00; }
-        .seller-id    { font-size:12px; color:#c17817; font-weight:700; }
-
         /* ── HEADER ── */
         .header-section {
             margin-bottom:30px; border-bottom:3px solid #d4a017;
@@ -100,20 +81,6 @@
         .submit-btn:disabled { opacity:.6; cursor:not-allowed; }
         .required { color:#e74c3c; }
 
-        /* ── SCREENS ── */
-        .success-screen { text-align:center; padding:50px 20px; display:none; animation:fadeIn .5s ease; }
-        .success-screen .checkmark {
-            width:80px; height:80px; border-radius:50%;
-            background:linear-gradient(135deg,#d4a017,#c17817);
-            display:flex; align-items:center; justify-content:center;
-            font-size:36px; margin:0 auto 24px;
-            animation:pop .5s cubic-bezier(.34,1.56,.64,1);
-            box-shadow:0 8px 24px rgba(212,160,23,.3);
-        }
-        @keyframes pop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
-        .success-screen h2 { color:#c17817; font-size:26px; margin-bottom:10px; }
-        .success-screen p  { color:#666; font-size:15px; line-height:1.7; }
-
         .already-submitted { text-align:center; padding:50px 20px; display:none; }
         .already-submitted h2 { color:#c17817; margin-bottom:15px; }
         .already-submitted p  { color:#666; font-size:15px; }
@@ -161,16 +128,6 @@
         </div>
     </div>
 
-    <!-- SELLER BANNER (visible only when scanned from wholesaler QR) -->
-    <div class="seller-banner" id="sellerBanner">
-        <div class="seller-icon">🏪</div>
-        <div class="seller-info">
-            <div class="seller-label">Referred by Wholesaler</div>
-            <div class="seller-name" id="bannerSellerName">—</div>
-            <div class="seller-id"   id="bannerSellerId">—</div>
-        </div>
-    </div>
-
     <!-- HEADER -->
     <div class="header-section">
         <div class="header-text">
@@ -188,16 +145,6 @@
         <h2>✅ Already Submitted</h2>
         <p>This form has already been submitted and cannot be submitted again.</p>
         <p style="margin-top:10px;color:#999">Thank you for your subscription!</p>
-    </div>
-
-    <!-- SUCCESS SCREEN -->
-    <div id="successScreen" class="success-screen">
-        <div class="checkmark">✓</div>
-        <h2>Submitted Successfully!</h2>
-        <p>Your details have been recorded.<br>Redirecting you to payment...</p>
-        <p style="margin-top:16px;color:#999;font-size:13px">
-            If not redirected automatically, <a href="#" id="paymentHref" style="color:#c17817;font-weight:600">click here to pay</a>.
-        </p>
     </div>
 
     <!-- MAIN FORM -->
@@ -291,7 +238,7 @@
 // ══════════════════════════════════════════════════════════════
 //  ⚙️  STEP 1: PASTE YOUR APPS SCRIPT URL HERE AFTER DEPLOYING
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_APJe9NFel13z9d63F6XVd6iCO4LPXdWEOs3VhQ-bJmFM9Qm8LkHnqPsYNi6v9L704Q/exec';
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
 // ══════════════════════════════════════════════════════════════
 
 // ── URL PARAM READER ──────────────────────────────────────────
@@ -320,17 +267,13 @@ function populateFromUrl() {
     // Payment link (comes from QR or use hardcoded default)
     const pl = getParam('paymentLink') || 'https://p.ppsl.io/PYTMPS/f4FEqk';
     document.getElementById('paymentLink').value = pl;
-    document.getElementById('paymentHref').href  = pl;
 
-    // Seller info (injected by QR scan)
+    // Seller info stored silently in hidden fields only (not shown to user)
     const sid   = getParam('sellerId');
     const sname = getParam('sellerName');
     if (sid) {
-        document.getElementById('sellerId').value             = sid;
-        document.getElementById('sellerName').value           = sname;
-        document.getElementById('bannerSellerId').textContent = 'ID: ' + sid;
-        document.getElementById('bannerSellerName').textContent = sname || sid;
-        document.getElementById('sellerBanner').classList.add('show');
+        document.getElementById('sellerId').value   = sid;
+        document.getElementById('sellerName').value = sname;
     }
 
     // Custom logo & size
@@ -398,7 +341,6 @@ const submitKey = 'kal_submitted_' + (document.getElementById('mobileNumber').va
 if (localStorage.getItem(submitKey) === 'true') {
     document.getElementById('kalyanForm').style.display      = 'none';
     document.getElementById('alreadySubmitted').style.display = 'block';
-    document.getElementById('sellerBanner').style.display    = 'none';
 }
 
 // ── FORM SUBMIT → APPS SCRIPT → PAYMENT REDIRECT ─────────────
@@ -456,13 +398,8 @@ document.getElementById('kalyanForm').addEventListener('submit', async function(
 
         hideLoading();
 
-        // Show success screen
-        document.getElementById('kalyanForm').style.display   = 'none';
-        document.getElementById('sellerBanner').style.display = 'none';
-        document.getElementById('successScreen').style.display = 'block';
-
-        // Redirect to Paytm payment after 2.5 seconds
-        setTimeout(() => { window.location.href = paymentLink; }, 2500);
+        // Redirect immediately to Paytm payment
+        window.location.href = paymentLink;
 
     } catch (err) {
         hideLoading();

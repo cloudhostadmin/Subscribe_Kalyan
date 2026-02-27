@@ -238,7 +238,7 @@
 // ══════════════════════════════════════════════════════════════
 //  ⚙️  STEP 1: PASTE YOUR APPS SCRIPT URL HERE AFTER DEPLOYING
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyYx5YlISxImfGyeV0EFpuzDauXEA5Jt-yPxyQ1KXx_klhLq3hsSeoEWF578opy5g3F/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBHBqFfgqVvQi9WUNi9kDy7yWlJFOlIobLub66dXRy54ePX2jhy0L250lw4jyRspY_/exec';
 // ══════════════════════════════════════════════════════════════
 
 // ── URL PARAM READER ──────────────────────────────────────────
@@ -265,7 +265,7 @@ function populateFromUrl() {
     });
 
     // Payment link (comes from QR or use hardcoded default)
-    const pl = getParam('paymentLink') || 'https://p.ppsl.io/PYTMPS/f4FEqk';
+    const pl = getParam('paymentLink') || 'https://p.ppsl.io/PYTMPS/P9ZPfk';
     document.getElementById('paymentLink').value = pl;
 
     // Seller info stored silently in hidden fields only (not shown to user)
@@ -336,12 +336,15 @@ function hideLoading() { document.getElementById('loadingOverlay').classList.add
 // ── INIT ──────────────────────────────────────────────────────
 populateFromUrl();
 
-// Check if this mobile already submitted (prevent duplicate)
-const submitKey = 'kal_submitted_' + (document.getElementById('mobileNumber').value || 'x');
-if (localStorage.getItem(submitKey) === 'true') {
-    document.getElementById('kalyanForm').style.display      = 'none';
-    document.getElementById('alreadySubmitted').style.display = 'block';
-}
+// Check duplicate: after populateFromUrl, mobile may be pre-filled from URL param
+// If not, we check on submit. Server-side (Apps Script) is the real duplicate guard.
+(function checkDuplicate() {
+    const mobile = document.getElementById('mobileNumber').value.trim();
+    if (mobile && localStorage.getItem('kal_submitted_' + mobile) === 'true') {
+        document.getElementById('kalyanForm').style.display       = 'none';
+        document.getElementById('alreadySubmitted').style.display = 'block';
+    }
+})();
 
 // ── FORM SUBMIT → APPS SCRIPT → PAYMENT REDIRECT ─────────────
 document.getElementById('kalyanForm').addEventListener('submit', async function(e) {
@@ -351,6 +354,13 @@ document.getElementById('kalyanForm').addEventListener('submit', async function(
     const mobile = document.getElementById('mobileNumber').value.trim();
     if (!/^\d{10}$/.test(mobile)) {
         alert('Please enter a valid 10-digit mobile number.');
+        return;
+    }
+
+    // Client-side duplicate check (server also checks)
+    if (localStorage.getItem('kal_submitted_' + mobile) === 'true') {
+        document.getElementById('kalyanForm').style.display       = 'none';
+        document.getElementById('alreadySubmitted').style.display = 'block';
         return;
     }
 
@@ -384,13 +394,18 @@ document.getElementById('kalyanForm').addEventListener('submit', async function(
     };
 
     try {
-        // mode: no-cors because Apps Script doesn't return CORS headers
-        // The request still reaches the server even though we can't read the response
+        // Send as URL-encoded form data — this is what Apps Script reads via e.parameter
+        // mode: no-cors is required (Apps Script doesn't send CORS headers),
+        // but the data IS received and saved correctly on the server side.
+        const formBody = Object.entries(payload)
+            .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v ?? ''))
+            .join('&');
+
         await fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
-            mode:   'no-cors',
-            headers:{ 'Content-Type': 'application/json' },
-            body:   JSON.stringify(payload)
+            method:  'POST',
+            mode:    'no-cors',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body:    formBody
         });
 
         // Mark submitted in localStorage (prevents duplicate from same device)
@@ -411,4 +426,3 @@ document.getElementById('kalyanForm').addEventListener('submit', async function(
 </script>
 </body>
 </html>
-

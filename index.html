@@ -81,11 +81,8 @@
         .submit-btn:disabled { opacity:.6; cursor:not-allowed; }
         .required { color:#e74c3c; }
 
-        .already-submitted { text-align:center; padding:50px 20px; display:none; }
-        .already-submitted h2 { color:#c17817; margin-bottom:15px; }
-        .already-submitted p  { color:#666; font-size:15px; }
-
         .hidden { display:none !important; }
+
 
         /* ── LOADING ── */
         .loading-overlay {
@@ -138,13 +135,6 @@
         <img src="https://raw.githubusercontent.com/cloudhostadmin/KALYAN_CENTURY_2026/main/kal2026.jpeg"
              alt="Kalyan Logo" class="header-image" id="rightLogo"
              onerror="this.style.display='none'">
-    </div>
-
-    <!-- ALREADY SUBMITTED -->
-    <div id="alreadySubmitted" class="already-submitted">
-        <h2>✅ Already Submitted</h2>
-        <p>This form has already been submitted and cannot be submitted again.</p>
-        <p style="margin-top:10px;color:#999">Thank you for your subscription!</p>
     </div>
 
     <!-- MAIN FORM -->
@@ -238,7 +228,7 @@
 // ══════════════════════════════════════════════════════════════
 //  ⚙️  STEP 1: PASTE YOUR APPS SCRIPT URL HERE AFTER DEPLOYING
 // ══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBHBqFfgqVvQi9WUNi9kDy7yWlJFOlIobLub66dXRy54ePX2jhy0L250lw4jyRspY_/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzH3O3xuqx0Yf-qZw7WGlfICeoDCiLQdXw-v_J8psgz5amrq2ZK-ixkt5aFIdR0aWxG/exec';
 // ══════════════════════════════════════════════════════════════
 
 // ── URL PARAM READER ──────────────────────────────────────────
@@ -265,7 +255,7 @@ function populateFromUrl() {
     });
 
     // Payment link (comes from QR or use hardcoded default)
-    const pl = getParam('paymentLink') || 'https://p.ppsl.io/PYTMPS/P9ZPfk';
+    const pl = getParam('paymentLink') || 'https://p.ppsl.io/PYTMPS/f4FEqk';
     document.getElementById('paymentLink').value = pl;
 
     // Seller info stored silently in hidden fields only (not shown to user)
@@ -336,15 +326,7 @@ function hideLoading() { document.getElementById('loadingOverlay').classList.add
 // ── INIT ──────────────────────────────────────────────────────
 populateFromUrl();
 
-// Check duplicate: after populateFromUrl, mobile may be pre-filled from URL param
-// If not, we check on submit. Server-side (Apps Script) is the real duplicate guard.
-(function checkDuplicate() {
-    const mobile = document.getElementById('mobileNumber').value.trim();
-    if (mobile && localStorage.getItem('kal_submitted_' + mobile) === 'true') {
-        document.getElementById('kalyanForm').style.display       = 'none';
-        document.getElementById('alreadySubmitted').style.display = 'block';
-    }
-})();
+
 
 // ── FORM SUBMIT → APPS SCRIPT → PAYMENT REDIRECT ─────────────
 document.getElementById('kalyanForm').addEventListener('submit', async function(e) {
@@ -357,12 +339,6 @@ document.getElementById('kalyanForm').addEventListener('submit', async function(
         return;
     }
 
-    // Client-side duplicate check (server also checks)
-    if (localStorage.getItem('kal_submitted_' + mobile) === 'true') {
-        document.getElementById('kalyanForm').style.display       = 'none';
-        document.getElementById('alreadySubmitted').style.display = 'block';
-        return;
-    }
 
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
@@ -394,26 +370,16 @@ document.getElementById('kalyanForm').addEventListener('submit', async function(
     };
 
     try {
-        // Send as URL-encoded form data — this is what Apps Script reads via e.parameter
-        // mode: no-cors is required (Apps Script doesn't send CORS headers),
-        // but the data IS received and saved correctly on the server side.
-        const formBody = Object.entries(payload)
-            .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v ?? ''))
-            .join('&');
-
         await fetch(APPS_SCRIPT_URL, {
             method:  'POST',
             mode:    'no-cors',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body:    formBody
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload)
         });
-
-        // Mark submitted in localStorage (prevents duplicate from same device)
-        localStorage.setItem('kal_submitted_' + mobile, 'true');
 
         hideLoading();
 
-        // Redirect immediately to Paytm payment
+        // Redirect immediately to payment
         window.location.href = paymentLink;
 
     } catch (err) {
